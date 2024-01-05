@@ -1,0 +1,6 @@
+## Interface: 90005
+## Title: maxCronometro
+## Version: 1.0
+## Author: Shephiroth
+## Notes: Um addon de cronômetro simples
+maxCronometro.lua

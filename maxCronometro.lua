@@ -11,7 +11,7 @@ frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
 
 -- Criando a segunda janela do cronômetro
 local secondFrame = CreateFrame("Frame", "MaxCronometroSecondFrame", frame, "BasicFrameTemplateWithInset")
-secondFrame:SetSize(170, 200)
+secondFrame:SetSize(170, 170)
 secondFrame:SetPoint("TOP", frame, "TOPRIGHT", 85, 0)
 secondFrame:EnableMouse(true)
 secondFrame:SetScript("OnDragStart", secondFrame.StartMoving)
@@ -39,6 +39,8 @@ local totalMoneyBeforeTransaction = 0
 local isTimerEnable = false
 local timerMinutes = 0
 local timerSeconds = 0
+local isAlarmRunning = false
+local alarmTime = 0
 
 -- Adicionando um título à janela
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -95,6 +97,7 @@ playButton:SetText("Play")
 playButton:SetScript("OnClick", function(self)
     if not isRunning then
         print("MaxCronômetro iniciado!")
+        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
         isRunning = true
     end
 end)
@@ -106,6 +109,7 @@ pauseButton:SetText("Pause")
 pauseButton:SetScript("OnClick", function(self)
     -- Lógica para pausar o cronômetro
     print("MaxCronômetro pausado!")
+    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
     isRunning = false
 end)
 
@@ -115,6 +119,7 @@ stopButton:SetPoint("LEFT", pauseButton, "RIGHT", 10, 0)
 stopButton:SetText("Stop")
 stopButton:SetScript("OnClick", function(self)
     -- Lógica para parar o cronômetro
+    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
     local minutes = math.floor(elapsedTime / 60)
     local seconds = elapsedTime % 60
     print("MaxCronômetro parado!")
@@ -175,7 +180,7 @@ inputBoxTimerTargetMin:Disable()  -- Inicia desativado
 -- Adicionando um rótulo
 local labelTimerTargetMin = inputFrameTimerTargetMin:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 labelTimerTargetMin:SetPoint("BOTTOM", inputFrameTimerTargetMin, "TOP", 15, 0)
-labelTimerTargetMin:SetText("Digite o alarme:")
+labelTimerTargetMin:SetText("Digite o tempo:") 
 
 -- Adicionando um caractére especial
 local timerTargetTextAux = inputFrameTimerTargetMin:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -193,7 +198,7 @@ labelTimerTargetResumeValue:SetPoint("BOTTOM", secondFrame, "TOP", 0, -124)
 labelTimerTargetResumeValue:SetText( timerMinutes .. " minutos e " .. timerSeconds .. " segundos")
 
 local function timerTextUpdate()
-    labelTimerTargetResumeValue:SetText( timerMinutes .. " minutos e " .. timerSeconds .. " segundos")
+    labelTimerTargetResumeValue:SetText( string.format("%02d",timerMinutes) .. " minutos e " .. string.format("%02d",timerSeconds) .. " segundos")
 end
 
 -- Adicionando uma função para ser chamada quando o texto do primeiro campo é alterado (Min)
@@ -230,15 +235,55 @@ inputBoxTimerTargetSec:SetScript("OnTextChanged", function(self, userInput)
     timerTextUpdate()
 end)
 
+-- Botão para iniciar o alarme
+local playTimerButton = CreateFrame("Button", "MaxCronometroplayTimerButton", secondFrame, "UIPanelButtonTemplate")
+playTimerButton:SetSize(50, 25)
+playTimerButton:SetPoint("CENTER", secondFrame, "CENTER", -25, -55)
+playTimerButton:SetText("Start")
+playTimerButton:Disable()
+playTimerButton:SetScript("OnClick", function(self)
+    if timerMinutes == 0 and timerSeconds == 0 then
+        print("Para definir o alarme digite o tempo!")
+    else
+        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        print("Alarme definido!")
+        isAlarmRunning = true
+    end
+end)
+
+-- Botão para cancelar o alarme
+local stopTimerButton = CreateFrame("Button", "MaxCronometrostopTimerButton", secondFrame, "UIPanelButtonTemplate")
+stopTimerButton:SetSize(50, 25)
+stopTimerButton:SetPoint("CENTER", secondFrame, "CENTER", 25, -55)
+stopTimerButton:SetText("Cancel")
+stopTimerButton:Disable()
+stopTimerButton:SetScript("OnClick", function(self)
+    print("Alarme cancelado!")
+    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+    isAlarmRunning = false
+    timerMinutes = 0
+    timerSeconds = 0
+    timerTextUpdate()
+    playTimerButton:Enable()
+    self:Disable()
+    inputBoxTimerTargetSec:SetText("")
+    inputBoxTimerTargetMin:SetText("")
+end)
+
 local function timerToggle()
     if isTimerEnable then
         inputBoxTimerTargetMin:Enable()
         inputBoxTimerTargetSec:Enable()
+        playTimerButton:Enable()
     else
         inputBoxTimerTargetMin:Disable()
         inputBoxTimerTargetSec:Disable()
         inputBoxTimerTargetMin:SetText("")
         inputBoxTimerTargetSec:SetText("")
+        playTimerButton:Disable()
+        timerMinutes = 0
+        timerSeconds = 0
+        timerTextUpdate()
     end
 end
 
@@ -251,6 +296,42 @@ timerCheckBox:SetScript("OnClick", function(self)
     end
     timerToggle()
 end)
+
+local function FlashScreen()
+    UIFrameFlash(secondFrame, 0.5, 0.5, 5, false, 0, 0)  -- Parâmetros ajustáveis conforme necessário
+    C_Timer.After(3, function()  -- Pára o piscar após 5 segundos (ajuste conforme necessário)
+        UIFrameFlashStop(secondFrame)
+        secondFrame:Show()
+    end)
+end
+
+secondFrame:SetScript("OnUpdate", function(self, elapsed)
+    if isAlarmRunning then
+        playTimerButton:Disable()
+        stopTimerButton:Enable()
+        if timerSeconds > 0 then
+            timerSeconds = timerSeconds - elapsed
+        else
+            if timerMinutes > 0 then
+                timerMinutes = timerMinutes - 1
+                timerSeconds = 60
+            else
+                FlashScreen()
+                print("###############")
+                print("Alarme tocando!")
+                print("###############")
+                PlaySound(SOUNDKIT.RAID_WARNING)
+                playTimerButton:Enable()
+                stopTimerButton:Disable()
+                inputBoxTimerTargetSec:SetText("")
+                inputBoxTimerTargetMin:SetText("")
+                isAlarmRunning = false
+            end
+        end
+        timerTextUpdate()
+    end
+end)
+
 
 -- Função que dispõe os elementos na tela
 -- ---------------------------------------

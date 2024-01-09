@@ -2,5 +2,5 @@
 ## Title: maxCronometro
 ## Version: 1.0
 ## Author: Shephiroth
-## Notes: Um addon de cronômetro simples
+## Notes: Um addon de cronômetro simples que também contabiliza outros dados como kills, gold, exp e etc...
 maxCronometro.lua

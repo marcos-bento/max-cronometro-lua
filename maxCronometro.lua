@@ -9,8 +9,17 @@ frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", frame.StartMoving)
 frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
 
+-- Criando a segunda janela do cronômetro
+local secondFrame = CreateFrame("Frame", "MaxCronometroSecondFrame", frame, "BasicFrameTemplateWithInset")
+secondFrame:SetSize(170, 200)
+secondFrame:SetPoint("TOP", frame, "TOPRIGHT", 85, 0)
+secondFrame:EnableMouse(true)
+secondFrame:SetScript("OnDragStart", secondFrame.StartMoving)
+secondFrame:SetScript("OnDragStop", secondFrame.StopMovingOrSizing)
+secondFrame:Hide()
 
-local titleText = "MaxCronometro!"
+-- Definindo o escopo de variáveis
+local expandedOptions = false
 local elapsedTime = 0
 local timeIcon = "|TInterface\\Icons\\INV_Misc_PocketWatch_02:12:12:0:0|t"
 local isRunning = false
@@ -27,11 +36,14 @@ local monsterKillCount = 0
 local expBeforeFight = 0
 local expAfterFight = 0
 local totalMoneyBeforeTransaction = 0
+local isTimerEnable = false
+local timerMinutes = 0
+local timerSeconds = 0
 
 -- Adicionando um título à janela
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOP", frame, "TOP", 0, -5)
-title:SetText(titleText)
+title:SetText("MaxCronometro!")
 
 -- Adicionando um texto para exibir o tempo
 local timerText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -43,6 +55,22 @@ local goldText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 goldText:SetPoint("CENTER", frame, "CENTER", 0, -2)
 goldText:SetText(goldIcon .. goldEarned .. " " .. silverIcon .. silverEarned .. " " .. copperIcon .. copperEarned)
 
+-- Adicionando um texto para exibir os monstros derrotados
+local monsterCountText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+monsterCountText:SetPoint("CENTER", frame, "CENTER", 0, 0)
+
+-- Adicionando um texto para exibir os items saqueados
+local itemCountText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+itemCountText:SetPoint("CENTER", monsterCountText, "BOTTOM", 0, -15)
+
+-- Adicionando um texto para exibir a experiência coletada
+local expCountText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+expCountText:SetPoint("CENTER", itemCountText, "BOTTOM", 0, -15)
+
+-- Adicionando um texto para exibir as missões finalizadas
+local questCountText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+questCountText:SetPoint("CENTER", expCountText, "BOTTOM", 0, -15)
+
 local function drawMoney()
 	if copperEarned > 100 then
 		copperEarned = copperEarned - 100
@@ -53,11 +81,13 @@ local function drawMoney()
 		silverEarned = silverEarned - 100
 		goldEarned = goldEarned + 1
 	end
-
-	goldText:SetText(goldIcon .. goldEarned .. " " .. silverIcon .. silverEarned .. " " .. copperIcon .. copperEarned)
+    if expandedOptions then
+	    goldText:SetText("Dinheiro ganho:" .. goldIcon .. goldEarned .. " " .. silverIcon .. silverEarned .. " " .. copperIcon .. copperEarned)
+    else
+	    goldText:SetText(goldIcon .. goldEarned .. " " .. silverIcon .. silverEarned .. " " .. copperIcon .. copperEarned)
+    end
 end
 
--- Adicionando botões de controle
 local playButton = CreateFrame("Button", "MaxCronometroPlayButton", frame, "UIPanelButtonTemplate")
 playButton:SetSize(50, 25)
 playButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 10, 10)
@@ -111,8 +141,156 @@ end)
 local function UpdateTimerDisplay()
     local minutes = math.floor(elapsedTime / 60)
     local seconds = elapsedTime % 60
-    timerText:SetText(timeIcon .. " " .. string.format("%02d:%02d", minutes, seconds))
+    if expandedOptions then 
+        timerText:SetText("Tempo decorrido: " .. timeIcon .. " " .. string.format("%02d:%02d", minutes, seconds))
+    else
+        timerText:SetText(timeIcon .. " " .. string.format("%02d:%02d", minutes, seconds))
+    end
 end
+
+-- ################################################
+-- Componentes da Tela 2:
+
+-- Criando o Checkbox para habilitar o temporizador (alarme)
+local timerCheckBox = CreateFrame("CheckButton", "MaxCronometroCheckBox", secondFrame, "UICheckButtonTemplate")
+timerCheckBox:SetPoint("TOPLEFT", secondFrame, "TOPLEFT", 15, -30)
+timerCheckBox:SetSize(20, 20)
+timerCheckBox.text = timerCheckBox:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+timerCheckBox.text:SetPoint("LEFT", timerCheckBox, "RIGHT", 0, 0)
+timerCheckBox.text:SetText("definir alarme")
+
+-- Criando o quadro para o primeiro campo de entrada (Min)
+local inputFrameTimerTargetMin = CreateFrame("Frame", "MaxCronometroInputFrameTimerTargetMin", secondFrame)
+inputFrameTimerTargetMin:SetPoint("TOP", secondFrame, "TOP", -10, -65)
+inputFrameTimerTargetMin:SetSize(25, 30)
+
+-- Criando o primeiro campo de entrada de texto (Min)
+local inputBoxTimerTargetMin = CreateFrame("EditBox", "MaxCronometroInputBoxTimerTargetMin", inputFrameTimerTargetMin, "InputBoxTemplate")
+inputBoxTimerTargetMin:SetAllPoints(true)
+inputBoxTimerTargetMin:SetAutoFocus(false)
+inputBoxTimerTargetMin:SetNumeric(true)  -- Permite apenas entrada numérica
+inputBoxTimerTargetMin:SetMaxLetters(2)  -- Define o número máximo de caracteres
+inputBoxTimerTargetMin:Disable()  -- Inicia desativado
+
+-- Adicionando um rótulo
+local labelTimerTargetMin = inputFrameTimerTargetMin:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+labelTimerTargetMin:SetPoint("BOTTOM", inputFrameTimerTargetMin, "TOP", 15, 0)
+labelTimerTargetMin:SetText("Digite o alarme:")
+
+-- Adicionando um caractére especial
+local timerTargetTextAux = inputFrameTimerTargetMin:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+timerTargetTextAux:SetPoint("TOP", secondFrame, "TOP", 9, -74)
+timerTargetTextAux:SetText(":")
+
+-- Adicionando um rótulo de confirmação
+local labelTimerTargetResume = inputFrameTimerTargetMin:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+labelTimerTargetResume:SetPoint("BOTTOM", secondFrame, "TOP", 0, -104)
+labelTimerTargetResume:SetText("O alarme soará em:")
+
+-- Adicionando um rótulo de confirmação
+local labelTimerTargetResumeValue = inputFrameTimerTargetMin:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+labelTimerTargetResumeValue:SetPoint("BOTTOM", secondFrame, "TOP", 0, -124)
+labelTimerTargetResumeValue:SetText( timerMinutes .. " minutos e " .. timerSeconds .. " segundos")
+
+local function timerTextUpdate()
+    labelTimerTargetResumeValue:SetText( timerMinutes .. " minutos e " .. timerSeconds .. " segundos")
+end
+
+-- Adicionando uma função para ser chamada quando o texto do primeiro campo é alterado (Min)
+inputBoxTimerTargetMin:SetScript("OnTextChanged", function(self, userInput)
+    local value = tonumber(self:GetText())
+    if value then
+        timerMinutes = value
+        timerTextUpdate()
+    end
+end)
+
+-- Criando o quadro para o segundo campo de entrada (Sec)
+local inputFrameTimerTargetSec = CreateFrame("Frame", "MaxCronometroInputFrameTimerTargetSec", secondFrame)
+inputFrameTimerTargetSec:SetPoint("TOP", secondFrame, "TOP", 30, -65)
+inputFrameTimerTargetSec:SetSize(25, 30)
+
+-- Criando o segundo campo de entrada de texto (Sec)
+local inputBoxTimerTargetSec = CreateFrame("EditBox", "MaxCronometroInputBoxTimerTargetSec", inputFrameTimerTargetSec, "InputBoxTemplate")
+inputBoxTimerTargetSec:SetAllPoints(true)
+inputBoxTimerTargetSec:SetAutoFocus(false)
+inputBoxTimerTargetSec:SetNumeric(true)  -- Permite apenas entrada numérica
+inputBoxTimerTargetSec:SetMaxLetters(2)  -- Define o número máximo de caracteres
+inputBoxTimerTargetSec:Disable()
+
+-- Adicionando uma função para ser chamada quando o texto do segundo campo é alterado (Sec)
+inputBoxTimerTargetSec:SetScript("OnTextChanged", function(self, userInput)
+    local value = tonumber(self:GetText())
+    if value and value >= 0 and value <= 60 then
+        timerSeconds = value
+    else
+        inputBoxTimerTargetSec:SetText("")
+        timerSeconds = 0
+    end
+    timerTextUpdate()
+end)
+
+local function timerToggle()
+    if isTimerEnable then
+        inputBoxTimerTargetMin:Enable()
+        inputBoxTimerTargetSec:Enable()
+    else
+        inputBoxTimerTargetMin:Disable()
+        inputBoxTimerTargetSec:Disable()
+        inputBoxTimerTargetMin:SetText("")
+        inputBoxTimerTargetSec:SetText("")
+    end
+end
+
+timerCheckBox:SetScript("OnClick", function(self)
+    local isChecked = self:GetChecked()
+    if isChecked then
+        isTimerEnable = true
+    else
+        isTimerEnable = false
+    end
+    timerToggle()
+end)
+
+-- Função que dispõe os elementos na tela
+-- ---------------------------------------
+
+local function drawScript()
+    if expandedOptions then
+        frame:SetSize(250, 200)
+        timerText:SetPoint("CENTER", frame, "CENTER", 0, 60)
+        goldText:SetPoint("CENTER", timerText, "BOTTOM", 0, -15)
+        monsterCountText:SetPoint("CENTER", goldText, "BOTTOM", 0, -15)
+        playButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 40, 10)
+        monsterCountText:SetText("Monstros derrotados: " .. monsterKillCount)
+        itemCountText:SetText("Itens saqueados: " .. itensLooted)
+        expCountText:SetText("Experiência obitda: " .. expGained .. " pontos")
+        questCountText:SetText("Missões finalizadas: " .. questCount)
+        secondFrame:Show()
+    else
+        frame:SetSize(190, 100)
+        timerText:SetPoint("CENTER", frame, "CENTER", 0, 15)
+        goldText:SetPoint("CENTER", frame, "CENTER", 0, -2)
+        playButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 10, 10)
+        monsterCountText:SetText("")
+        itemCountText:SetText("")
+        expCountText:SetText("")
+        questCountText:SetText("")
+        secondFrame:Hide()
+    end
+    UpdateTimerDisplay()
+    drawMoney()
+end
+
+-- Adicionando botões de controle
+local moreButton = CreateFrame("Button", "MaxCronometroMoreButton", frame, "UIPanelButtonTemplate")
+moreButton:SetSize(30, 20)
+moreButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -25)
+moreButton:SetText("...")
+moreButton:SetScript("OnClick", function(self)
+    if expandedOptions then expandedOptions = false else expandedOptions = true end
+    drawScript()
+end)
 
 frame:SetScript("OnUpdate", function(self, elapsed)
     if isRunning then
@@ -134,8 +312,6 @@ end)
 -- Trecho de código que lidará com o Gold ganho
 --###################################################
 
-local frame = CreateFrame("Frame")
-
 -- Lidando com SAQUE DE MOBS
 -- --------------------------
 frame:RegisterEvent("LOOT_OPENED")
@@ -147,7 +323,7 @@ local function HandleLootOpenedEvent(self, event, ...)
         -- Se houver itens no loot, verifique o dinheiro saqueado
         for i = 1, numItems do
             local lootType, ouroString, qty = GetLootSlotInfo(i)
-            if lootType == 133784 then --Saqueou ouro
+            if lootType == 133784 or lootType == 133785 then --Saqueou ouro
 				local ouro, prata, cobre = ouroString:match("(%d+)%s*de%s*Ouro%s*(%d+)%s*de%s*Prata%s*(%d+)%s*de%s*Cobre")
 				-- Converta os valores para números inteiros
 				goldEarned = goldEarned + tonumber(ouro)
@@ -168,6 +344,7 @@ local function HandleLootOpenedEvent(self, event, ...)
                 -- #########################
                 -- Opção 1: Itens saqueados de forma agrupada EX: Loot de 5 sedas = 1 unidade
                 itensLooted = itensLooted + 1
+                drawScript()
                 -- #########################
                 -- #########################
                 -- Opção 2: Itens saqueados de forma individual EX: Loot de 5 sedas = 5 unidades
@@ -188,9 +365,7 @@ frame:RegisterEvent("MERCHANT_CLOSED")
 local function UpdateMoneyEarned()
 	if isRunning then
 		local moneyDiff = GetMoney() - totalMoneyBeforeTransaction
-		
 		if moneyDiff > 0 then
-			
 			local goldFromTransaction = math.floor(moneyDiff / 10000)
 			local silverFromTransaction = math.floor((moneyDiff % 10000) / 100)
 			local copperFromTransaction = moneyDiff % 100
@@ -198,7 +373,6 @@ local function UpdateMoneyEarned()
 			goldEarned = goldEarned + goldFromTransaction
 			silverEarned = silverEarned + silverFromTransaction
 			copperEarned = copperEarned + copperFromTransaction
-
 			drawMoney()
 		end
 	end
@@ -224,6 +398,7 @@ local function HandleQuestTurnedInEvent(self, event, questID, experience, money)
         if experience > 0 then
             expEarned = expEarned + experience
         end
+        drawScript()
     end
 end
 
@@ -238,6 +413,7 @@ function HandleCombatLogEvent(self, event, ...)
         if subevent == "PARTY_KILL" then
             monsterKillCount = monsterKillCount + 1
             expBeforeFight = UnitXP("player")
+            drawScript()
         end
     end
 end
@@ -249,6 +425,7 @@ function handleExpUpdate(self, event, ...)
         expAfterFight = UnitXP("player")
         expGained = expGained + (expAfterFight - expBeforeFight)
         expBeforeFight = expAfterFight
+        drawScript()
     end
 end
 
@@ -292,9 +469,5 @@ end)
 -- Comandos de chat para mostrar/esconder a janela
 SLASH_MAXCRONOMETRO1 = "/maxCronometro"
 SlashCmdList["MAXCRONOMETRO"] = function(msg)
-    if frame:IsShown() then
-        frame:Hide()
-    else
-        frame:Show()
-    end
+    frame:Show()
 end

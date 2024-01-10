@@ -345,7 +345,7 @@ local function drawScript()
         playButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 40, 10)
         monsterCountText:SetText("Monstros derrotados: " .. monsterKillCount)
         itemCountText:SetText("Itens saqueados: " .. itensLooted)
-        expCountText:SetText("Experiência obitda: " .. expGained .. " pontos")
+        expCountText:SetText("Experiência obtida: " .. expGained .. " pontos")
         questCountText:SetText("Missões finalizadas: " .. questCount)
         secondFrame:Show()
     else

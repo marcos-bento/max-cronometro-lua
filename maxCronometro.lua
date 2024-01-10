@@ -153,6 +153,21 @@ local function UpdateTimerDisplay()
     end
 end
 
+-- Trecho que permite linkar um item e acompanhar o seu Farm
+
+-- ################################################
+-- < PESQUISANDO COMO FAZER >
+-- ################################################
+
+local selectItemButton = CreateFrame("Button", "MaxCronometroSelectItemButton", frame, "UIPanelButtonTemplate")
+selectItemButton:SetSize(120, 25)
+selectItemButton:SetPoint("CENTER", frame, "BOTTOM", 0, 55)
+selectItemButton:SetText("Selecionar Item")
+selectItemButton:Hide()
+selectItemButton:SetScript("OnClick", function(self)
+    -- Abrir a janela de seleção de itens
+end)
+  
 -- ################################################
 -- Componentes da Tela 2:
 
@@ -338,8 +353,8 @@ end)
 
 local function drawScript()
     if expandedOptions then
-        frame:SetSize(250, 200)
-        timerText:SetPoint("CENTER", frame, "CENTER", 0, 60)
+        frame:SetSize(250, 230)
+        timerText:SetPoint("CENTER", frame, "CENTER", 0, 70)
         goldText:SetPoint("CENTER", timerText, "BOTTOM", 0, -15)
         monsterCountText:SetPoint("CENTER", goldText, "BOTTOM", 0, -15)
         playButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 40, 10)
@@ -348,6 +363,7 @@ local function drawScript()
         expCountText:SetText("Experiência obtida: " .. expGained .. " pontos")
         questCountText:SetText("Missões finalizadas: " .. questCount)
         secondFrame:Show()
+        selectItemButton:Show()
     else
         frame:SetSize(190, 100)
         timerText:SetPoint("CENTER", frame, "CENTER", 0, 15)
@@ -357,6 +373,7 @@ local function drawScript()
         itemCountText:SetText("")
         expCountText:SetText("")
         questCountText:SetText("")
+        selectItemButton:Hide()
         secondFrame:Hide()
     end
     UpdateTimerDisplay()
@@ -403,7 +420,7 @@ local function HandleLootOpenedEvent(self, event, ...)
     if numItems > 0 and isRunning then
         -- Se houver itens no loot, verifique o dinheiro saqueado
         for i = 1, numItems do
-            local lootType, ouroString, qty = GetLootSlotInfo(i)
+            local lootType, ouroString, qty, _, _, _, _, _, _, _, _, _, _, _, link = GetLootSlotInfo(i)
             if lootType == 133784 or lootType == 133785 then --Saqueou ouro
 				local ouro, prata, cobre = ouroString:match("(%d+)%s*de%s*Ouro%s*(%d+)%s*de%s*Prata%s*(%d+)%s*de%s*Cobre")
 				-- Converta os valores para números inteiros
@@ -424,12 +441,12 @@ local function HandleLootOpenedEvent(self, event, ...)
             else
                 -- #########################
                 -- Opção 1: Itens saqueados de forma agrupada EX: Loot de 5 sedas = 1 unidade
-                itensLooted = itensLooted + 1
-                drawScript()
+                -- itensLooted = itensLooted + 1
                 -- #########################
                 -- #########################
                 -- Opção 2: Itens saqueados de forma individual EX: Loot de 5 sedas = 5 unidades
-                -- itensLooted = itensLooted + qty
+                itensLooted = itensLooted + qty
+                drawScript()
                 -- #########################
             end
         end

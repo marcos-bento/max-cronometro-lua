@@ -4,3 +4,7 @@
 ## Author: Shephiroth
 ## Notes: Um addon de cronômetro simples que também contabiliza outros dados como kills, gold, exp e etc...
 maxCronometro.lua
+
+libs/LibStub/LibStub.lua
+libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
+libs/LibItemInfo-1.0/LibItemInfo-1.0.lua
